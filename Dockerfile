@@ -36,9 +36,11 @@ RUN wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-
 # 2. Install SEGGER Embedded Studio for ARM64 (v5.42a was not available, using a newer version)
 # NOTE: The original x64 URL was changed to the ARM64 URL
 RUN wget -q https://www.segger.com/downloads/embedded-studio/Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
-    tar xf Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz --strip-components=1 arm_segger_embedded_studio_720_linux_arm64/install_segger_embedded_studio && \
-    rm Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz
-RUN yes yes | ./install_segger_embedded_studio --copy-files-to /usr/local/segger_embedded_studio
+    mkdir -p segger && \
+    tar -xzf Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz -C segger && \
+    rm Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
+    yes | ./segger/arm_segger_embedded_studio_v720_linux_arm64/install_segger_embedded_studio --copy-files-to /usr/local/segger_embedded_studio && \
+    rm -rf segger
 
 # 3. Install nRF command line tools for ARM64
 # NOTE: The original amd64 .deb was changed to the arm64 .deb
