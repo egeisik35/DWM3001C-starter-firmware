@@ -1,0 +1,12 @@
+
+Output/
+build/
+*.hex
+*.elf
+*.bin
+*.map
+*.o
+*.d
+*.tar.gz
+*.zip
+*.deb
