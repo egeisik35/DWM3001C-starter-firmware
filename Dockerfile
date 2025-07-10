@@ -1,84 +1,104 @@
-#
-# Dockerfile for DWM3001C on ARM64 (e.g., Raspberry Pi)
-#
-# Build Initiator:  docker build --build-arg ROLE=initiator -t dwm-initiator .
-# Build Responder: docker build --build-arg ROLE=responder -t dwm-responder .
-#
-
-# 1. Use an ARM64 (aarch64) version of Ubuntu
 FROM --platform=linux/arm64 ubuntu:22.04
 
-# Set a build argument for ROLE, defaulting to 'initiator'
+# Set build argument for firmware role (initiator/responder)
 ARG ROLE=initiator
+
+# Set frontend to noninteractive for automated installations
 ARG DEBIAN_FRONTEND=noninteractive
 
-# Install base dependencies, which are multi-arch
-RUN apt-get -y update && \
-    apt-get install -y \
-    build-essential \
-    wget \
-    unzip \
-    libxrender1 \
-    libxext6 \
-    libusb-1.0-0 \
-    apt-utils \
-    udev \
-    sed && \
-    rm -rf /var/lib/apt/lists/*
+# Update apt, install necessary tools and dependencies
+RUN set -x && \
+    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until && \
+    echo 'Acquire::AllowInsecureRepositories "true";' >> /etc/apt/apt.conf.d/99no-check-valid-until && \
+    echo 'APT::Get::AllowUnauthenticated "true";' >> /etc/apt/apt.conf.d/99no-check-valid-until && \
+    apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates apt-transport-https tzdata \
+        build-essential wget curl git unzip libusb-1.0-0-dev \
+        minicom grep udev locales && \
+    rm -rf /var/lib/apt/lists/* && \
+    locale-gen en_US.UTF-8
 
-WORKDIR /usr/local
+ENV LANG en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
 
-# install nRF5 SDK (architecture independent)
-RUN wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/sdks/nrf5/binaries/nrf5_sdk_17.1.0_ddde560.zip && \
-    unzip nrf5_sdk_17.1.0_ddde560.zip && \
-    rm nrf5_sdk_17.1.0_ddde560.zip
+# Install GNU ARM Embedded Toolchain (using latest stable version 14.3.Rel1)
+# This is the aarch64 hosted cross-toolchain for aarch64 bare-metal target.
+# Suitable for building ARM64 firmware on an ARM64 host.
+RUN set -x && \
+    wget -q https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/bin/arm-gnu-toolchain-14.3.rel1-aarch64-aarch64-none-elf.tar.xz && \
+    tar -xf arm-gnu-toolchain-14.3.rel1-aarch64-aarch64-none-elf.tar.xz -C /usr/local/ && \
+    rm arm-gnu-toolchain-14.3.rel1-aarch64-aarch64-none-elf.tar.xz
 
-# 2. Install SEGGER Embedded Studio for ARM64 (v5.42a was not available, using a newer version)
-# NOTE: The original x64 URL was changed to the ARM64 URL
-RUN wget -q https://www.segger.com/downloads/embedded-studio/Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
+# Add toolchain to PATH
+ENV PATH="/usr/local/arm-gnu-toolchain-14.3.rel1-aarch64-aarch64-none-elf/bin:${PATH}"
+
+# Install SEGGER Embedded Studio for ARM (non-interactive installation)
+RUN set -x && \
+    wget -q https://www.segger.com/downloads/embedded-studio/Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
     mkdir -p segger && \
     tar -xzf Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz -C segger && \
+    echo "--- Contents of segger/ after tar extraction (should contain installer) ---" && \
+    ls -F segger/arm_segger_embedded_studio_v720_linux_arm64/ && \
+    # Navigate into the extracted directory and run the installer silently
+    cd segger/arm_segger_embedded_studio_v720_linux_arm64 && \
+    # The --silent flag assumes non-interactive installation. If it fails, consult SEGGER docs.
+    ./install_segger_embedded_studio --silent /usr/local/segger_embedded_studio && \
+    cd / && \
     rm Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
-    yes | ./segger/arm_segger_embedded_studio_v720_linux_arm64/install_segger_embedded_studio --copy-files-to /usr/local/segger_embedded_studio && \
-    rm -rf segger
+    rm -rf segger && \
+    echo "--- Post-installation check: Expected target directory ---" && \
+    if [ ! -d "/usr/local/segger_embedded_studio" ] || [ -z "$(ls -A /usr/local/segger_embedded_studio 2>/dev/null)" ]; then \
+        echo "ERROR: SEGGER Embedded Studio installation directory /usr/local/segger_embedded_studio is missing or empty after install attempt!" && \
+        exit 1; \
+    else \
+        echo "SEGGER Embedded Studio directory /usr/local/segger_embedded_studio exists and is not empty." && \
+        echo "Contents of /usr/local/segger_embedded_studio:" && \
+        ls -F /usr/local/segger_embedded_studio; \
+    fi && \
+    echo "--- Contents of /usr/local/segger_embedded_studio/bin/ ---\" && \
+    ls -R /usr/local/segger_embedded_studio/bin/ && \
+    echo \"--- End of bin directory contents listing --"
 
-# 3. Install nRF command line tools for ARM64
-# NOTE: The original amd64 .deb was changed to the arm64 .deb
-RUN wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-23-2/nrf-command-line-tools_10.23.2_arm64.deb && \
-    dpkg -i nrf-command-line-tools_10.23.2_arm64.deb && \
-    rm nrf-command-line-tools_10.23.2_arm64.deb
-# Workaround for udevadm in Docker
-RUN echo '#!/bin/bash\necho not running udevadm "$@"' > /usr/bin/udevadm && chmod +x /usr/bin/udevadm && apt-get install -y --fix-broken
+# Install Nordic nRF Command Line Tools (includes nrfjprog)
+# Adjust version as needed
+RUN set -x && \
+    wget -q https://nsscprodmedia.blob.core.windows.net/prod/software/nrf-command-line-tools-10.22.1-linux-arm64.tar.gz && \
+    tar -xzf nrf-command-line-tools-10.22.1-linux-arm64.tar.gz -C /usr/local/ && \
+    rm nrf-command-line-tools-10.22.1-linux-arm64.tar.gz
 
-# 4. Install J-Link tools for ARM64
-# NOTE: The original x86_64 .tgz was changed to the aarch64 .tgz
-RUN wget -q --post-data accept_license_agreement=accepted https://www.segger.com/downloads/jlink/JLink_Linux_V794o_aarch64.tgz && \
-    tar xf JLink_Linux_V794o_aarch64.tgz --strip-components=1 && \
-    rm JLink_Linux_V794o_aarch64.tgz
+# Add nrfjprog to PATH
+ENV PATH="/usr/local/nrf-command-line-tools/bin:${PATH}"
 
-# Set up the project directory
+# Install J-Link drivers (if not already included with SEGGER/nRF tools)
+# This provides additional J-Link utilities
+RUN set -x && \
+    wget -q https://www.segger.com/downloads/jlink/JLink_Linux_V796f_arm64.deb -O jlink.deb && \
+    dpkg -i jlink.deb || apt-get install -fy && \
+    rm jlink.deb
+
+# Fix for udevadm in Docker (prevents 'udevadm control --reload-rules' errors)
+# This creates a dummy udevadm that doesn't actually do anything,
+# which prevents errors from tools expecting udevadm functionality in a
+# containerized environment where udev rules can't be reloaded.
+RUN mkdir -p /lib/udev && \
+    echo '#!/bin/bash' > /lib/udev/udevadm && \
+    echo 'exit 0' >> /lib/udev/udevadm && \
+    chmod +x /lib/udev/udevadm
+
+# Setup project directory
 WORKDIR /project
 
-# Copy your source code into the container
-COPY . .
-
-# 5. Automatically modify source files based on the ROLE argument before building
-RUN echo "INFO: Configuring build for ROLE=${ROLE}" && \
-    if [ "$ROLE" = "initiator" ]; then \
-        # Configure for Initiator
-        sed -i 's|//#define TEST_SS_TWR_INITIATOR|#define TEST_SS_TWR_INITIATOR|' Src/example_selection.h && \
-        sed -i 's|#define TEST_READING_DEV_ID|//#define TEST_READING_DEV_ID|' Src/example_selection.h && \
-        sed -i 's|extern int read_dev_id(void); read_dev_id();|// extern int read_dev_id(void); read_dev_id();|' Src/main.c && \
-        sed -i 's|// extern int ss_twr_initiator(void); ss_twr_initiator();|extern int ss_twr_initiator(void); ss_twr_initiator();|' Src/main.c; \
-    elif [ "$ROLE" = "responder" ]; then \
-        # Configure for Responder
-        sed -i 's|//#define TEST_SS_TWR_RESPONDER|#define TEST_SS_TWR_RESPONDER|' Src/example_selection.h && \
-        sed -i 's|#define TEST_READING_DEV_ID|//#define TEST_READING_DEV_ID|' Src/example_selection.h && \
-        sed -i 's|extern int read_dev_id(void); read_dev_id();|// extern int read_dev_id(void); read_dev_id();|' Src/main.c && \
-        sed -i 's|// extern int ss_twr_responder(void); ss_twr_responder();|extern int ss_twr_responder(void); ss_twr_responder();|' Src/main.c; \
+# Apply firmware role (Initiator/Responder) based on ARG
+# This modifies example_selection.h and main.c based on the ROLE build argument.
+RUN if [ "$ROLE" = "responder" ]; then \
+        sed -i 's/#define DECA_API_INITIATOR/#define DECA_API_RESPONDER/' Src/example_selection.h && \
+        sed -i 's/#define EX_02A_SIMPLE_TX/#define EX_04A_SIMPLE_RX/' Src/example_selection.h && \
+        sed -i 's/static void rtc_config(void)/ /' Src/main.c && \
+        echo "Configured as RESPONDER"; \
     else \
-        echo "ERROR: ROLE must be 'initiator' or 'responder'. Found: '${ROLE}'" && exit 1; \
+        echo "Configured as INITIATOR (default)"; \
     fi
 
-# Build the firmware
-RUN make
+# Set the default command when starting the container
+CMD ["/bin/bash"]

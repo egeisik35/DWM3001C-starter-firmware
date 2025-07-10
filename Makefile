@@ -1,10 +1,10 @@
 # run SEGGER Embedded Studio's build system and output the results to ./Output/Common/Exe
 build: development-environment
-	docker run -v "$$(pwd)":/project uberi/qorvo-nrf52833-board /usr/local/segger_embedded_studio_V5.42a/bin/emBuild -config "Common" /project/dw3000_api.emProject
+	docker run -v "$$(pwd)":/project uberi/qorvo-nrf52833-board /usr/local/segger_embedded_studio/bin/emBuild -config "Common" /project/dw3000_api.emProject
 
 # remove all build outputs from the project (you may want to run this if you run into issues with stale interfaces)
 clean: development-environment
-	docker run -v "$$(pwd)":/project uberi/qorvo-nrf52833-board /usr/local/segger_embedded_studio_V5.42a/bin/emBuild -config "Common" -clean /project/dw3000_api.emProject
+	docker run -v "$$(pwd)":/project uberi/qorvo-nrf52833-board /usr/local/segger_embedded_studio/bin/emBuild -config "Common" -clean /project/dw3000_api.emProject
 
 # program the DWM3001CDK using nrfjprog, communicating via USB and the on-board SEGGER J-Link
 # TODO: this uses --privileged and exposes all USB devices because SEGGER's libraries require it for some reason, it's not very good for security but it's the only way for now: https://wiki.segger.com/J-Link_Docker_Container
@@ -15,7 +15,7 @@ flash: development-environment
 # TODO: this uses --privileged and exposes all USB devices because SEGGER's libraries require it for some reason, it's not very good for security but it's the only way for now: https://wiki.segger.com/J-Link_Docker_Container
 stream-debug-logs:
 	echo "Run this command to view debug logs: tail -f Output/debug-log.txt"
-	docker run --privileged -it -v /dev/bus/usb:/dev/bus/usb -v "$$(pwd)/Output":/project/Output uberi/qorvo-nrf52833-board /usr/local/JLink_Linux_V792n_x86_64/JLinkRTTLogger -Device NRF52833_XXAA -if SWD -Speed 4000 -RTTChannel 0 /project/Output/debug-log.txt
+	docker run --privileged -it -v /dev/bus/usb:/dev/bus/usb -v "$$(pwd)/Output":/project/Output uberi/qorvo-nrf52833-board /usr/local/JLinkRTTLogger -Device NRF52833_XXAA -if SWD -Speed 4000 -RTTChannel 0 /project/Output/debug-log.txt
 
 # auto-detect the DWM3001CDK's UART and open a minicom terminal connected to that UART, communicating via USB and the on-board SEGGER J-Link
 serial-terminal:
@@ -29,7 +29,8 @@ development-shell: development-environment
 
 # build the development environment, reusing the existing build in the docker cache if available
 development-environment:
-	docker build -t uberi/qorvo-nrf52833-board - < Dockerfile  # build without sending any build context
+	docker build -t uberi/qorvo-nrf52833-board . # build with current directory as context
+
 
 # export the development environment to the tar archive "./uberi_qorvo-nrf52833-board.tar", for offline archival purposes
 save-development-environment:

@@ -1,2 +1,17 @@
 Output/
 uberi_qorvo-nrf52833-board.tar
+# Firmware build artifacts
+*.hex
+*.elf
+*.bin
+*.map
+*.o
+*.d
+
+# Additional output folders
+build/
+Output/
+
+# Editor and system clutter
+.env
+.DS_Store
