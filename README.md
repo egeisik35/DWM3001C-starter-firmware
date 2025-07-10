@@ -13,25 +13,6 @@ The firmware and instructions in this repository somewhat assume that you're usi
 
 **See also:** if you're looking for a fully-featured firmware that you just need some minor customizations for, check out my [DWM3001CDK demo firmware repository](https://github.com/Uberi/DWM3001CDK-demo-firmware).
 
-Quickstart
-----------
-
-```sh
-# MANUAL ACTION (OPTIONAL): run this command to use my prebuilt development environment, otherwise it'll be automatically built from scratch: docker pull uberi/qorvo-nrf52833-board
-
-make build
-
-# MANUAL ACTION: connect the lower USB port of the DWM3001CDK (labelled J9) to this computer using a USB cable (this is the J-Link's USB port)
-
-make flash
-
-make stream-debug-logs
-
-# MANUAL ACTION: run the following command in another terminal to see the debug logs: tail -f Output/debug-log.txt
-```
-
-You should now see RTT output from the DWM3001CDK, try pressing the reset buttom (labelled SW1) to re-run the example program and output more logs over RTT.
-
 Developing
 ----------
 
