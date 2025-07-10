@@ -1,8 +1,5 @@
 # Base image for ARM64 (Raspberry Pi etc.)
-FROM --platform=linux/arm64 ubuntu:22.04
-
-# QEMU for cross-platform execution
-COPY --from=multiarch/qemu-user-static:latest /usr/bin/qemu-aarch64-static /usr/bin/
+FROM ubuntu:22.04
 
 ARG ROLE=initiator
 ARG DEBIAN_FRONTEND=noninteractive
@@ -35,21 +32,6 @@ WORKDIR /usr/local
 RUN wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/sdks/nrf5/binaries/nrf5_sdk_17.1.0_ddde560.zip && \
     unzip nrf5_sdk_17.1.0_ddde560.zip && \
     rm nrf5_sdk_17.1.0_ddde560.zip
-
-# Install SEGGER Embedded Studio (ARM64) — Headless Copy Method
-RUN wget -q https://www.segger.com/downloads/embedded-studio/Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
-    tar -xzf Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
-    rm Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
-    mkdir -p /usr/local/segger_embedded_studio && \
-    cp -r arm_segger_embedded_studio_v720_linux_arm64/* /usr/local/segger_embedded_studio && \
-    rm -rf arm_segger_embedded_studio_v720_linux_arm64
-
-# Verify SEGGER install
-RUN if [ ! -f "/usr/local/segger_embedded_studio/bin/emBuild" ]; then \
-        echo "ERROR: emBuild executable not found!" && exit 1; \
-    else \
-        echo "✅ SEGGER Embedded Studio installed successfully."; \
-    fi
 
 # Install nRF Command Line Tools
 RUN wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-23-2/nrf-command-line-tools_10.23.2_arm64.deb && \
