@@ -13,7 +13,7 @@ RUN \
     apt-get install -y --no-install-recommends \
     ca-certificates apt-transport-https tzdata build-essential wget unzip \
     libxrender1 libxext6 libusb-1.0-0 apt-utils udev sed locales xz-utils \
-    libfreetype6 libfontconfig1 && \
+    libfreetype6 libfontconfig1 git && \
     ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
     echo "Etc/UTC" > /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata && \
@@ -46,6 +46,10 @@ RUN wget -q --post-data accept_license_agreement=accepted https://www.segger.com
     tar -xzf JLink_Linux_V850_arm64.tgz --strip-components=1 && \
     rm JLink_Linux_V850_arm64.tgz
 
+# Install ARM GNU Embedded Toolchain
+# This installs the cross-compiler for ARM Cortex-M microcontrollers
+RUN apt-get update -y && apt-get install -y --no-install-recommends gcc-arm-none-eabi && rm -rf /var/lib/apt/lists/*
+
 # Project directory
 WORKDIR /project
 
@@ -67,4 +71,3 @@ RUN echo "Setting up build role: ${ROLE}" && \
     else \
         echo "ERROR: Unknown ROLE '$ROLE'" && exit 1; \
     fi
-
