@@ -3,7 +3,7 @@ DWM3001C Starter Firmware
 
 A firmware for the [Qorvo DWM3001C](https://www.qorvo.com/products/p/DWM3001C) with comprehensive examples for all of the module's UWB and ranging functionality, and developer tooling that makes working with the firmware much easier than the official tooling. Features:
 
-* **Reproducible**: built-in Docker development environment automates away most of the fragile and finicky parts of setting up the Qorvo SDK, SEGGER Embedded Studio, SEGGER J-Link, nRF52 SDK, and nRF command line tools.**This environment is now specifically optimized for native ARM architectures (e.g., Raspberry Pi) for more reliable builds.**
+* **Reproducible**: built-in Docker development environment automates away most of the fragile and finicky parts of setting up the Qorvo SDK, SEGGER Embedded Studio, SEGGER J-Link, nRF52 SDK, and nRF command line tools.**This fork updates the environment for native ARM64 architectures (e.g., Raspberry Pi), replacing x86 assumptions for a smoother developer experience.**
 * **Minimal**: based on a heavily-modified version of the [official Qorvo DWM3001C API software](https://www.qorvo.com/products/p/DWM3001C#documents) (2022-08 version), but significantly simpler in terms of code size and organization. Many source files and folders have been consolidated to make the project much easier to navigate.
 * **Complete**: includes build system, flashing tools, and logging/debugging tools. This is the only repository you need to work with the firmware.
 * **Portable**: run `make save-development-environment` to generate a 5GB tar file containing the entire development environment. In 10 years from now, when half of these dependencies disappear off the internet, run `make load-development-environment` and you'll still be able to compile this project.
@@ -38,6 +38,7 @@ Developing
 You'll need Docker, and many of the hardware-facing commands in the Makefile assume you're using Linux. The `make serial-terminal` command assumes you have `minicom`, `grep`, and `udevadm` installed.
 
 ### Building and Running the Docker Environment
+**Note:** This section reflects changes specific to this fork. It includes an ARM64-optimized Docker setup and updated download URLs.
 
 While the `make build` command in the Quickstart uses a default configuration, you can explicitly build the Docker image with your desired firmware role (Initiator or Responder) and then run it with hardware access for flashing and debugging.
 
@@ -90,6 +91,14 @@ To interact with your DWM3001CDK (for flashing firmware, streaming debug logs, e
 You can develop your custom applications by modifying `Src/main.c` and other files within `Src/`.
 
 Note that you'll have to manually edit `dw3000_api.emProject` with any file additions/removals/renames. It sounds annoying, and it is, but I still consider it an improvement over directly interacting with the proprietary SEGGER Embedded Studio.
+
+Fork Information
+----------------
+
+This is a fork of [Uberi's DWM3001C Starter Firmware](https://github.com/Uberi/DWM3001C-starter-firmware).The primary goal of this fork is to improve support for native ARM64 systems (e.g., Raspberry Pi), replace broken tooling links, and streamline the Docker build process for constrained development environments.
+
+Contributions and improvements welcome.
+
 
 License
 -------
