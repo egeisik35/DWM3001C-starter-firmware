@@ -3,11 +3,11 @@ DOCKER_IMAGE := dwm-firmware:responder
 
 # Build the firmware using GCC inside Docker
 build: development-environment
-	docker run -it --rm -v "$(PWD)":/project $(DOCKER_IMAGE) bash -c "cd /project && make"
+	docker run -it --rm -v "$$(pwd)":/project $(DOCKER_IMAGE) bash -c "cd /project && make"
 
 # Clean build outputs
 clean: development-environment
-	docker run -it --rm -v "$(PWD)":/project $(DOCKER_IMAGE) bash -c "cd /project && make clean"
+	docker run -it --rm -v "$$(pwd)":/project $(DOCKER_IMAGE) bash -c "cd /project && make clean"
 
 # Flash the DWM3001CDK
 flash: development-environment
