@@ -1,72 +1,88 @@
+# Base image for ARM64 (Raspberry Pi etc.)
 FROM --platform=linux/arm64 ubuntu:22.04
 
-# Set build argument for firmware role (initiator/responder)
-ARG ROLE=initiator
+# QEMU for cross-platform execution
+COPY --from=multiarch/qemu-user-static:latest /usr/bin/qemu-aarch64-static /usr/bin/
 
-# Set frontend to noninteractive for automated installations
+ARG ROLE=initiator
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
-RUN set -x && \
+RUN \
     echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until && \
     echo 'Acquire::AllowInsecureRepositories "true";' >> /etc/apt/apt.conf.d/99no-check-valid-until && \
     echo 'APT::Get::AllowUnauthenticated "true";' >> /etc/apt/apt.conf.d/99no-check-valid-until && \
     apt-get update -y && \
     apt-get install -y --no-install-recommends \
-        ca-certificates apt-transport-https tzdata \
-        build-essential wget curl git unzip libusb-1.0-0-dev \
-        minicom grep udev locales && \
-    rm -rf /var/lib/apt/lists/* && \
-    locale-gen en_US.UTF-8
+    ca-certificates apt-transport-https tzdata build-essential wget unzip \
+    libxrender1 libxext6 libusb-1.0-0 apt-utils udev sed locales xz-utils \
+    libfreetype6 libfontconfig1 && \
+    ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
+    echo "Etc/UTC" > /etc/timezone && \
+    dpkg-reconfigure -f noninteractive tzdata && \
+    rm -rf /var/lib/apt/lists/*
 
+# Set locales
+RUN locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8
 ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
 
-# Install SEGGER Embedded Studio for ARM (non-interactive)
-RUN set -x && \
-    wget -q https://www.segger.com/downloads/embedded-studio/Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
-    mkdir -p segger && \
-    tar -xzf Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz -C segger && \
-    cd segger/arm_segger_embedded_studio_v720_linux_arm64 && \
-    ./install_segger_embedded_studio --silent /usr/local/segger_embedded_studio && \
-    cd / && \
-    rm -rf Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz segger
+# Create working directory
+WORKDIR /usr/local
 
-ENV PATH="/usr/local/segger_embedded_studio/bin:${PATH}"
+# Install nRF5 SDK
+RUN wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/sdks/nrf5/binaries/nrf5_sdk_17.1.0_ddde560.zip && \
+    unzip nrf5_sdk_17.1.0_ddde560.zip && \
+    rm nrf5_sdk_17.1.0_ddde560.zip
 
-# Install Nordic nRF Command Line Tools (includes nrfjprog)
-RUN set -x && \
-    wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-24-2/nrf-command-line-tools-10.24.2_linux-arm64.tar.gz && \
-    tar -xzf nrf-command-line-tools-10.24.2_linux-arm64.tar.gz -C /usr/local/ && \
-    rm nrf-command-line-tools-10.24.2_linux-arm64.tar.gz
+# Install SEGGER Embedded Studio (ARM64) — Headless Copy Method
+RUN wget -q https://www.segger.com/downloads/embedded-studio/Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
+    tar -xzf Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
+    rm Setup_EmbeddedStudio_ARM_v720_linux_arm64.tar.gz && \
+    mkdir -p /usr/local/segger_embedded_studio && \
+    cp -r arm_segger_embedded_studio_v720_linux_arm64/* /usr/local/segger_embedded_studio && \
+    rm -rf arm_segger_embedded_studio_v720_linux_arm64
 
-ENV PATH="/usr/local/nrf-command-line-tools/bin:${PATH}"
-
-# Install J-Link tools with license acceptance
-RUN set -x && \
-    wget --post-data "accept_license_agreement=accepted&non_emb_ctr=confirmed" \
-    "https://www.segger.com/downloads/jlink/JLink_Linux_V850_arm64.tgz" -O JLink_Linux_arm64.tgz && \
-    tar -xzf JLink_Linux_arm64.tgz -C /usr/local/ && \
-    rm JLink_Linux_arm64.tgz
-
-# Workaround for udevadm errors in container
-RUN mkdir -p /lib/udev && \
-    echo '#!/bin/bash' > /lib/udev/udevadm && \
-    echo 'exit 0' >> /lib/udev/udevadm && \
-    chmod +x /lib/udev/udevadm
-
-# Set working directory
-WORKDIR /project
-
-# Apply firmware role
-RUN if [ "$ROLE" = "responder" ]; then \
-        sed -i 's/#define DECA_API_INITIATOR/#define DECA_API_RESPONDER/' Src/example_selection.h && \
-        sed -i 's/#define EX_02A_SIMPLE_TX/#define EX_04A_SIMPLE_RX/' Src/example_selection.h && \
-        sed -i 's/static void rtc_config(void)/ /' Src/main.c && \
-        echo "Configured as RESPONDER"; \
+# Verify SEGGER install
+RUN if [ ! -f "/usr/local/segger_embedded_studio/bin/emBuild" ]; then \
+        echo "ERROR: emBuild executable not found!" && exit 1; \
     else \
-        echo "Configured as INITIATOR (default)"; \
+        echo "✅ SEGGER Embedded Studio installed successfully."; \
     fi
 
-CMD ["/bin/bash"]
+# Install nRF Command Line Tools
+RUN wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-23-2/nrf-command-line-tools_10.23.2_arm64.deb && \
+    dpkg -i nrf-command-line-tools_10.23.2_arm64.deb && \
+    rm nrf-command-line-tools_10.23.2_arm64.deb
+
+# Workaround for udevadm issue in Docker
+RUN echo '#!/bin/bash\necho not running udevadm "$@"' > /usr/bin/udevadm && chmod +x /usr/bin/udevadm && apt-get install -y --fix-broken
+
+# Install J-Link Tools (ARM64)
+RUN wget -q --post-data accept_license_agreement=accepted https://www.segger.com/downloads/jlink/JLink_Linux_V850_arm64.tgz && \
+    tar -xzf JLink_Linux_V850_arm64.tgz --strip-components=1 && \
+    rm JLink_Linux_V850_arm64.tgz
+
+# Project directory
+WORKDIR /project
+
+# Copy project files into container
+COPY . .
+
+# Adjust firmware source files based on ROLE
+RUN echo "Setting up build role: ${ROLE}" && \
+    if [ "$ROLE" = "initiator" ]; then \
+        sed -i 's|//#define TEST_SS_TWR_INITIATOR|#define TEST_SS_TWR_INITIATOR|' Src/example_selection.h && \
+        sed -i 's|#define TEST_READING_DEV_ID|//#define TEST_READING_DEV_ID|' Src/example_selection.h && \
+        sed -i 's|extern int read_dev_id(void); read_dev_id();|// extern int read_dev_id(void); read_dev_id();|' Src/main.c && \
+        sed -i 's|// extern int ss_twr_initiator(void); ss_twr_initiator();|extern int ss_twr_initiator(void); ss_twr_initiator();|' Src/main.c; \
+    elif [ "$ROLE" = "responder" ]; then \
+        sed -i 's|//#define TEST_SS_TWR_RESPONDER|#define TEST_SS_TWR_RESPONDER|' Src/example_selection.h && \
+        sed -i 's|#define TEST_READING_DEV_ID|//#define TEST_READING_DEV_ID|' Src/example_selection.h && \
+        sed -i 's|extern int read_dev_id(void); read_dev_id();|// extern int read_dev_id(void); read_dev_id();|' Src/main.c && \
+        sed -i 's|// extern int ss_twr_responder(void); ss_twr_responder();|extern int ss_twr_responder(void); ss_twr_responder();|' Src/main.c; \
+    else \
+        echo "ERROR: Unknown ROLE '$ROLE'" && exit 1; \
+    fi
 
