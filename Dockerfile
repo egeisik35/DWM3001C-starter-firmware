@@ -1,7 +1,6 @@
 # Base image for ARM64 (Raspberry Pi etc.)
 FROM ubuntu:22.04
 
-ARG ROLE=initiator
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
@@ -46,6 +45,14 @@ RUN wget -q --post-data accept_license_agreement=accepted https://www.segger.com
     tar -xzf JLink_Linux_V850_arm64.tgz --strip-components=1 && \
     rm JLink_Linux_V850_arm64.tgz
 
+# Install SEGGER Embedded Studio version 8.24 (ARM64)
+RUN wget -q --post-data accept_license_agreement=accepted https://www.segger.com/downloads/embedded-studio/Setup_EmbeddedStudio_v824_Linux_arm64.tar.gz && \
+    tar -xzf Setup_EmbeddedStudio_v824_Linux_arm64.tar.gz && \
+    rm Setup_EmbeddedStudio_v824_Linux_arm64.tar.gz && \
+    chmod +x segger_embedded_studio_v824_linux_arm64/install_segger_embedded_studio && \
+    yes yes | segger_embedded_studio_v824_linux_arm64/install_segger_embedded_studio --copy-files-to /usr/local/segger_embedded_studio_V8.24 && \
+    rm -rf segger_embedded_studio_v824_linux_arm64
+
 # Install ARM GNU Embedded Toolchain
 # This installs the cross-compiler for ARM Cortex-M microcontrollers
 RUN apt-get update -y && apt-get install -y --no-install-recommends gcc-arm-none-eabi && rm -rf /var/lib/apt/lists/*
@@ -56,18 +63,3 @@ WORKDIR /project
 # Copy project files into container
 COPY . .
 
-# Adjust firmware source files based on ROLE
-RUN echo "Setting up build role: ${ROLE}" && \
-    if [ "$ROLE" = "initiator" ]; then \
-        sed -i 's|//#define TEST_SS_TWR_INITIATOR|#define TEST_SS_TWR_INITIATOR|' Src/example_selection.h && \
-        sed -i 's|#define TEST_READING_DEV_ID|//#define TEST_READING_DEV_ID|' Src/example_selection.h && \
-        sed -i 's|extern int read_dev_id(void); read_dev_id();|// extern int read_dev_id(void); read_dev_id();|' Src/main.c && \
-        sed -i 's|// extern int ss_twr_initiator(void); ss_twr_initiator();|extern int ss_twr_initiator(void); ss_twr_initiator();|' Src/main.c; \
-    elif [ "$ROLE" = "responder" ]; then \
-        sed -i 's|//#define TEST_SS_TWR_RESPONDER|#define TEST_SS_TWR_RESPONDER|' Src/example_selection.h && \
-        sed -i 's|#define TEST_READING_DEV_ID|//#define TEST_READING_DEV_ID|' Src/example_selection.h && \
-        sed -i 's|extern int read_dev_id(void); read_dev_id();|// extern int read_dev_id(void); read_dev_id();|' Src/main.c && \
-        sed -i 's|// extern int ss_twr_responder(void); ss_twr_responder();|extern int ss_twr_responder(void); ss_twr_responder();|' Src/main.c; \
-    else \
-        echo "ERROR: Unknown ROLE '$ROLE'" && exit 1; \
-    fi

@@ -1,11 +1,12 @@
 # Define the image name you're actually using
-DOCKER_IMAGE := dwm-firmware:responder
+DOCKER_IMAGE := dwm-firmware
 
 # Build the firmware using GCC inside Docker
 build: development-environment
-	docker run -it --rm -v "$$(pwd)":/project $(DOCKER_IMAGE) bash -c "cd /project && make"
+	docker run -it --rm -v "$$(pwd)":/project $(DOCKER_IMAGE) \
+	/usr/local/segger_embedded_studio_V8.24/bin/emBuild -config Common /project/dw3000_api.emProject
 
-# Clean build outputs
+# # Clean build outputs
 clean: development-environment
 	docker run -it --rm -v "$$(pwd)":/project $(DOCKER_IMAGE) bash -c "cd /project && make clean"
 
