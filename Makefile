@@ -16,7 +16,8 @@ flash: development-environment
 		-v /dev/bus/usb:/dev/bus/usb \
 		-v "$(PWD)/Output":/project/Output:ro \
 		$(DOCKER_IMAGE) \
-		nrfjprog --force -f nrf52 --program /project/Output/Common/Exe/dw3000_api.hex --sectorerase --verify
+		bash -c 'LD_LIBRARY_PATH=/usr/local /usr/local/bin/nrfjprog --force -f nrf52 --program /project/Output/Common/Exe/dw3000_api.hex --sectorerase --verify'
+
 
 # Read RTT logs
 stream-debug-logs:
@@ -25,7 +26,7 @@ stream-debug-logs:
 		-v /dev/bus/usb:/dev/bus/usb \
 		-v "$(PWD)/Output":/project/Output \
 		$(DOCKER_IMAGE) \
-		/usr/local/JLinkRTTLogger -Device NRF52833_XXAA -if SWD -Speed 4000 -RTTChannel 0 /project/Output/debug-log.txt
+		bash -c 'LD_LIBRARY_PATH=/usr/local /usr/local/JLinkRTTLogger -Device NRF52833_XXAA -if SWD -Speed 4000 -RTTChannel 0 /project/Output/debug-log.txt'
 
 # Open a minicom UART terminal to the board
 serial-terminal:
