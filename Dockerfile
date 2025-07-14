@@ -46,7 +46,7 @@ RUN wget -q --post-data accept_license_agreement=accepted https://www.segger.com
     rm JLink_Linux_V850_arm64.tgz
 
 # Install SEGGER Embedded Studio version 8.24 (ARM64)
-RUN wget -q --post-data accept_license_agreement=accepted https://www.segger.com/downloads/embedded-studio/Setup_EmbeddedStudio_v824_Linux_arm64.tar.gz && \
+ RUN wget -q --post-data accept_license_agreement=accepted https://www.segger.com/downloads/embedded-studio/Setup_EmbeddedStudio_v824_Linux_arm64.tar.gz && \
     tar -xzf Setup_EmbeddedStudio_v824_Linux_arm64.tar.gz && \
     rm Setup_EmbeddedStudio_v824_Linux_arm64.tar.gz && \
     chmod +x segger_embedded_studio_v824_linux_arm64/install_segger_embedded_studio && \

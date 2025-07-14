@@ -55,7 +55,7 @@ Revision: $Rev: 12804 $
 #include <stdio.h>
 #include "limits.h"
 #include "__libc.h"
-#include "__vfprintf.h"
+//#include "__vfprintf.h"
 
 /*********************************************************************
 *
@@ -79,7 +79,7 @@ Revision: $Rev: 12804 $
 // #define PRINTF_USE_SEGGER_RTT_FORMATTING    1 // Use RTT formatting
 //
 #ifndef   PRINTF_USE_SEGGER_RTT_FORMATTING
-  #define PRINTF_USE_SEGGER_RTT_FORMATTING    0
+  #define PRINTF_USE_SEGGER_RTT_FORMATTING    1
 #endif
 //
 // If using standard library formatting,
@@ -132,11 +132,11 @@ int printf(const char *fmt,...) {
 *
 **********************************************************************
 */
-static int _putchar(int x, __printf_tag_ptr ctx) {
-  (void)ctx;
-  SEGGER_RTT_Write(0, (char *)&x, 1);
-  return x;
-}
+//static int _putchar(int x, __printf_tag_ptr ctx) {
+//  (void)ctx;
+//  SEGGER_RTT_Write(0, (char *)&x, 1);
+//  return x;
+//}
 
 /*********************************************************************
 *
@@ -224,11 +224,11 @@ int puts(const char *s) {
 *  Function description
 *    Write one character via RTT.
 */
-int __putchar(int x, __printf_tag_ptr ctx) {
-  (void)ctx;
-  SEGGER_RTT_Write(0, (char *)&x, 1);
-  return x;
-}
+//int __putchar(int x, __printf_tag_ptr ctx) {
+//  (void)ctx;
+//  SEGGER_RTT_Write(0, (char *)&x, 1);
+//  return x;
+//}
 
 /*********************************************************************
 *

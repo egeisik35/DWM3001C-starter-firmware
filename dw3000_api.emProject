@@ -75,7 +75,7 @@
         <file file_name="Src/SEGGER/SEGGER_RTT_Conf.h">
           <configuration Name="Debug" build_exclude_from_build="No" />
         </file>
-        <file file_name="Src/SEGGER/SEGGER_RTT_Syscalls_SES.c">
+	<file file_name="Src/SEGGER/SEGGER_RTT_Syscalls_SES.c">
           <configuration Name="Debug" build_exclude_from_build="No" />
         </file>
       </folder>
